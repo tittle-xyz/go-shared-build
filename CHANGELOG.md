@@ -7,6 +7,13 @@ deliberate upgrade someone has to opt into with `make update-build`.
 Note the local convention: a change to what `make check` accepts is a minor bump
 at minimum, never a patch, because it can turn a previously-green project red.
 
+## [0.4.1](https://github.com/tittle-xyz/go-shared-build/compare/v0.4.0...v0.4.1) (2026-07-26)
+
+
+### Bug Fixes
+
+* make the override-warning assertion able to fail ([#11](https://github.com/tittle-xyz/go-shared-build/issues/11)) ([3d19195](https://github.com/tittle-xyz/go-shared-build/commit/3d191956c9547d0edebe93b8d99c18742c5b72e1))
+
 ## [0.4.0](https://github.com/tittle-xyz/go-shared-build/compare/v0.3.0...v0.4.0) (2026-07-26)
 
 
