@@ -132,6 +132,39 @@ the version in the filename, e.g. `golangci-lint-v2.12.2`. Two consequences:
 Set `TOOLS_DIR` to something repo-local if a project must be hermetic. Current
 pins: `make tools-versions`.
 
+## Migrating an existing repo
+
+One thing bites every time: **the required status check names change.**
+
+A repo's own CI usually has a job called `test` or `build-test`. Calling
+`go-ci.yml` produces `ci / check` and `ci / readiness` instead. If branch
+protection requires the old name, that check can never report again and every
+pull request is blocked on a check that will never run — with no obvious error,
+because nothing failed.
+
+Check both places, because a repo can have either or both:
+
+```sh
+gh api repos/OWNER/REPO/branches/main/protection/required_status_checks \
+  --jq '[.checks[].context]'
+gh api repos/OWNER/REPO/rulesets --jq '.[] | {id, name, target}'
+```
+
+Then update them to the names the shared workflow actually emits:
+
+```sh
+gh api --method PATCH \
+  repos/OWNER/REPO/branches/main/protection/required_status_checks \
+  -f 'checks[][context]=ci / check'
+```
+
+Don't require `ci / readiness` in a repo that sets `readiness: false` — it
+reports as skipped, and requiring a deliberately-disabled check is a trap for
+the next person.
+
+A side benefit once migrated: check names are identical across every repo on the
+shared build, so protection rules stop being per-repo trivia.
+
 ## Keeping a project's own target
 
 When a project already defines a target this file also defines, Make warns about
