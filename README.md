@@ -339,6 +339,11 @@ quickstart never goes stale.
 
 Consumers then pick it up with `make update-build`.
 
+**If you squash-merge, the PR title must be a Conventional Commit.** Squash takes
+the PR title as the commit subject and throws away the individual commits'
+prefixes, so a plain-English title leaves release-please with nothing to parse —
+it finds no releasable change and skips the release without erroring.
+
 Two local conventions:
 
 - **A change to what `make check` accepts is a minor bump at minimum**, never a
