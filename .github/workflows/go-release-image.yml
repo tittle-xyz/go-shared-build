@@ -1,0 +1,126 @@
+# Reusable release workflow for tittle-xyz Go services.
+#
+# Conventional Commits -> release-please maintains a release PR; merging it tags
+# the version, writes the CHANGELOG, and builds/pushes a container image to GHCR
+# tagged with the release.
+#
+# The image build is inlined behind the `release_created` gate rather than living
+# in an `on: release` workflow, because a tag created by release-please's
+# GITHUB_TOKEN does not trigger `release` or `push: tags` events.
+#
+# Caller:
+#
+#   permissions:
+#     contents: write
+#     pull-requests: write
+#     packages: write
+#   jobs:
+#     release:
+#       uses: tittle-xyz/go-shared-build/.github/workflows/go-release-image.yml@v1
+name: go-release-image
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: "Image name under ghcr.io/<owner>/. Defaults to the repo name."
+        type: string
+        required: false
+        default: ""
+      platforms:
+        description: "Comma-separated build platforms."
+        type: string
+        required: false
+        default: linux/amd64
+      context:
+        description: "Docker build context."
+        type: string
+        required: false
+        default: "."
+      dockerfile:
+        description: "Path to the Dockerfile."
+        type: string
+        required: false
+        default: Dockerfile
+      latest-tag:
+        description: "Also push the :latest tag alongside the version tag."
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        id: release
+        with:
+          release-type: go
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: ${{ steps.release.outputs.release_created }}
+
+      - name: Resolve image name
+        if: ${{ steps.release.outputs.release_created }}
+        id: image
+        env:
+          OVERRIDE: ${{ inputs.image-name }}
+        run: |
+          set -euo pipefail
+          name="${OVERRIDE:-${GITHUB_REPOSITORY#*/}}"
+          echo "ref=ghcr.io/${GITHUB_REPOSITORY_OWNER}/${name}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        if: ${{ steps.release.outputs.release_created }}
+
+      - name: Log in to GHCR
+        if: ${{ steps.release.outputs.release_created }}
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        if: ${{ steps.release.outputs.release_created }}
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ${{ steps.image.outputs.ref }}
+          # `value=` is load-bearing. Without it, type=semver reads the version out
+          # of `github.ref` — and under workflow_call that is the CALLER's ref
+          # (refs/heads/main), not the tag, so it would silently emit no version
+          # tag. release-please hands us the version; feeding it in explicitly is
+          # what makes this correct. (Learned the hard way in alpaca-monitor.)
+          #
+          # No v{{major}}.{{minor}} alias is emitted — that tag moves with every
+          # patch, which is exactly the mutability a pinned deploy exists to escape.
+          tags: |
+            type=semver,pattern=v{{version}},value=${{ steps.release.outputs.tag_name }}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ inputs.latest-tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.release.outputs.tag_name }}
+
+      - name: Build and push
+        if: ${{ steps.release.outputs.release_created }}
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          build-args: |
+            VERSION=${{ steps.release.outputs.tag_name }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Layer cache in GitHub Actions storage; without it every release
+          # recompiles the whole image from scratch.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

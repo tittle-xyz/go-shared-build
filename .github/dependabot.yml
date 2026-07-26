@@ -1,0 +1,25 @@
+# Third-party actions are pinned to commit SHAs so a compromised or repointed
+# upstream tag cannot change what runs in a consumer's CI. Dependabot is what
+# keeps those pins from going stale: it opens a PR per update, preserving the
+# SHA-plus-version-comment form, and this repo's own self-test CI has to pass
+# before it can merge.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      # Conventional Commits, so release-please can version these correctly if
+      # this repo ever adopts it.
+      prefix: "fix"
+      prefix-development: "chore"
+    labels:
+      - dependencies
+    groups:
+      # One PR for routine bumps; majors stay separate so they get real review.
+      actions-minor-patch:
+        update-types:
+          - minor
+          - patch

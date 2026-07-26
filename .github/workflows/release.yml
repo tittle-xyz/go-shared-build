@@ -1,0 +1,16 @@
+name: release
+
+# This repo ships no artifact — a release is a version bump, a CHANGELOG entry,
+# and a tag that consumers pin. Dogfoods its own reusable workflow via a local
+# ref, so the path consumers take is the path this repo takes.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    uses: ./.github/workflows/release-tag.yml

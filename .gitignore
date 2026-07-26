@@ -1,0 +1,7 @@
+# tools installed by tools.mk
+/bin/
+/.tools/
+
+# editor / OS
+.DS_Store
+*.swp

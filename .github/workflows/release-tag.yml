@@ -1,0 +1,56 @@
+# Reusable release workflow for repos that release nothing but a tag.
+#
+# For projects with no build artifact — build tooling, config, docs. Conventional
+# Commits drive a release-please PR; merging it bumps the version, writes the
+# CHANGELOG, and creates the tag and GitHub Release. Nothing is compiled or
+# published.
+#
+# Go projects want go-release-cli.yml (binaries) or go-release-image.yml (image)
+# instead; both do this plus the artifact build.
+#
+# Caller:
+#
+#   permissions:
+#     contents: write
+#     pull-requests: write
+#   jobs:
+#     release:
+#       uses: tittle-xyz/go-shared-build/.github/workflows/release-tag.yml@v0.1.0
+name: release-tag
+
+on:
+  workflow_call:
+    inputs:
+      release-type:
+        description: >-
+          release-please strategy. Defaults to "simple", which tracks the version
+          in version.txt and suits repos with no language manifest. Ignored when
+          release-please-config.json is present, which takes precedence.
+        type: string
+        required: false
+        default: simple
+    outputs:
+      release_created:
+        description: "true when this run created a release."
+        value: ${{ jobs.release.outputs.release_created }}
+      tag_name:
+        description: "Tag of the release just created, if any."
+        value: ${{ jobs.release.outputs.tag_name }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # Picks up release-please-config.json and .release-please-manifest.json
+      # automatically when they exist; falls back to the release-type input.
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        id: release
+        with:
+          release-type: ${{ inputs.release-type }}

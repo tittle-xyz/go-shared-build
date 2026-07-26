@@ -1,0 +1,89 @@
+name: selftest
+
+# This repo has no Go code of its own, so "does it work" means: does a real
+# project built against this working tree pass? scripts/selftest.sh scaffolds a
+# throwaway module and exercises every target, including asserting that
+# fmt-check, lint and tidy-check actually FAIL on broken input — a lint config
+# that silently stopped loading would otherwise look like a green build.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS ships GNU Make 3.81 and BSD sed; Linux has Make 4.x and GNU sed.
+        # The Makefiles are written for the older, stricter pair, and this matrix
+        # is what keeps that true.
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Cache pinned tools
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/tittle-xyz/go-tools
+          key: ${{ runner.os }}-gotools-${{ hashFiles('tools.mk') }}
+
+      - name: Report make version
+        run: make --version | head -1
+
+      - name: Self-test
+        run: ./scripts/selftest.sh
+
+  # The workflows are this repo's main product, so they get linted like code.
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: stable
+
+      - name: Run actionlint
+        run: |
+          set -euo pipefail
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint" -color
+
+  # Every third-party action must be pinned to a commit SHA. A plain tag would
+  # let a compromised or repointed upstream change what runs in every consuming
+  # repo's CI, which is this repo's single largest blast radius.
+  pinning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Assert third-party actions are SHA-pinned
+        run: |
+          set -euo pipefail
+          # Match `uses:` refs pointing outside this repo whose ref is not a
+          # 40-character hex SHA.
+          #
+          # POSIX classes, not \s, so this behaves the same under BSD and GNU
+          # grep. And [[:space:]]+ must be one-or-more: with `*` the following
+          # character class happily matches the space itself, which flagged the
+          # local `uses: ./...` ref as unpinned.
+          if unpinned=$(grep -rnE \
+                '^[[:space:]]*(-[[:space:]]*)?uses:[[:space:]]+[^./[:space:]]' \
+                .github/workflows/ \
+                | grep -v 'tittle-xyz/go-shared-build' \
+                | grep -vE '@[0-9a-f]{40}( |$|#)'); then
+            echo "::error::third-party actions must be pinned to a full commit SHA"
+            echo "$unpinned"
+            exit 1
+          fi
+          echo "all third-party actions are SHA-pinned"

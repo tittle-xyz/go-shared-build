@@ -1,0 +1,54 @@
+# Shared golangci-lint configuration for tittle-xyz Go projects.
+#
+# Used automatically by `make lint`. A project that needs to diverge drops its own
+# .golangci.yml at its repo root and that wins — but prefer changing this file, so
+# the whole fleet moves together.
+version: "2"
+
+run:
+  timeout: 3m
+
+linters:
+  enable:
+    - errcheck      # unchecked errors are the bug class that actually bites
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - revive        # style/consistency; replaces the archived golint
+    - bodyclose     # unclosed HTTP response bodies leak connections
+    - errorlint     # %w vs %v, and errors.Is/As misuse
+    - noctx         # HTTP requests without a context are unpluggable
+    - unconvert
+    - copyloopvar
+
+  settings:
+    errcheck:
+      # Deferred Close on readers and the like is noise, not signal.
+      exclude-functions:
+        - (io.Closer).Close
+    revive:
+      rules:
+        - name: exported
+          # Warn about missing doc comments on exported identifiers, but don't
+          # fail a young repo over it — promote to an error once a repo settles.
+          disabled: true
+        - name: unused-parameter
+          disabled: true
+
+  exclusions:
+    generated: lax
+    rules:
+      # Test files get a longer leash: table-driven tests legitimately ignore
+      # errors and reuse helpers in ways production code should not.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - bodyclose
+          - noctx
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

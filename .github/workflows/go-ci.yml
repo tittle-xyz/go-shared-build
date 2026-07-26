@@ -1,0 +1,131 @@
+# Reusable CI workflow for tittle-xyz Go projects.
+#
+# Callers reduce to a few lines:
+#
+#   jobs:
+#     ci:
+#       uses: tittle-xyz/go-shared-build/.github/workflows/go-ci.yml@v1
+#
+# The gate itself is `make check` from the shared build, so adding a check there
+# rolls out to every project on its next `make update-build` — CI never has to
+# enumerate steps.
+name: go-ci
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version to use. Defaults to the go directive in go.mod."
+        type: string
+        required: false
+        default: ""
+      race:
+        description: "Also run the test suite under the race detector."
+        type: boolean
+        required: false
+        default: true
+      build:
+        description: "Build the binary after the checks pass."
+        type: boolean
+        required: false
+        default: true
+      os:
+        description: "Runner to execute on."
+        type: string
+        required: false
+        default: ubuntu-latest
+      readiness:
+        description: "Run the toaster-ready ramp-up readiness gate."
+        type: boolean
+        required: false
+        default: true
+      readiness-min:
+        description: >-
+          Minimum readiness score to pass. Empty uses toaster-ready's own gate
+          threshold (50), which a fresh project from the templates clears. Raise
+          it as a repo matures — 70 is a reasonable bar once it has real history.
+        type: string
+        required: false
+        default: ""
+      readiness-version:
+        description: >-
+          toaster-ready version to install. Pinned rather than "latest" so a CI
+          result is reproducible and a new release cannot fail a build unbidden.
+        type: string
+        required: false
+        default: v0.5.0
+
+permissions:
+  contents: read
+
+# A new push to a branch makes the in-flight run for that branch pointless.
+# Declared here so every consuming repo inherits it without repeating itself.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Two mutually exclusive setup steps: an explicit version when the caller
+      # asks for one, otherwise follow go.mod so the toolchain tracks whatever
+      # `make update-go` last set.
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        if: inputs.go-version != ''
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        if: inputs.go-version == ''
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Fetches the pinned shared build into .build/ before anything uses it.
+      # This repo is public, so the clone is anonymous and works for private
+      # consumers and fork pull requests alike — no token, no secrets.
+      # Doing it as its own step keeps a network failure legible instead of
+      # surfacing as a mysterious "No rule to make target".
+      - name: Sync shared build
+        run: make build-sync
+
+      # Building golangci-lint from source takes minutes. Key the cache on
+      # tools.mk so it survives every run until a tool pin actually changes.
+      - name: Cache pinned tools
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/tittle-xyz/go-tools
+          key: ${{ runner.os }}-gotools-${{ hashFiles('.build/tools.mk') }}
+
+      - name: Check (fmt, tidy, vet, lint, test)
+        run: make check
+
+      - name: Test with race detector
+        if: inputs.race
+        run: make test-race
+
+      - name: Build
+        if: inputs.build
+        run: make build
+
+  # Scores how readily a human or an agent can pick this repo up, and fails below
+  # the threshold. Its own job so it runs in parallel with the build, and because
+  # it needs full history that the check job has no use for.
+  readiness:
+    if: inputs.readiness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Several readiness signals are derived from git history.
+          fetch-depth: 0
+
+      - name: Gate ramp-up readiness
+        uses: tittle-xyz/toaster-ready@46660d0fbe6761413d1390a6b707fb727214da20 # v0.5.0
+        with:
+          min: ${{ inputs.readiness-min }}
+          version: ${{ inputs.readiness-version }}

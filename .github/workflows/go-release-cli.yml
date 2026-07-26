@@ -1,0 +1,86 @@
+# Reusable release workflow for tittle-xyz Go CLIs.
+#
+# Conventional Commits -> release-please maintains a release PR; merging it tags
+# the version and writes the CHANGELOG, and goreleaser attaches cross-platform
+# binaries plus checksums to the Release.
+#
+# The goreleaser step is inlined behind the `release_created` gate rather than
+# living in an `on: release` workflow, because a tag created by release-please's
+# GITHUB_TOKEN does not trigger `release` or `push: tags` events.
+#
+# Caller:
+#
+#   permissions:
+#     contents: write
+#     pull-requests: write
+#   jobs:
+#     release:
+#       uses: tittle-xyz/go-shared-build/.github/workflows/go-release-cli.yml@v1
+name: go-release-cli
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version to build with. Defaults to the go directive in go.mod."
+        type: string
+        required: false
+        default: ""
+      major-tag:
+        description: >-
+          Force-move the major version tag (v1, v2) to each release. Enable for
+          repos consumed as GitHub Actions; leave off for ordinary CLIs.
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        id: release
+        with:
+          release-type: go
+
+      # Everything below runs only when a release was just created.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          # goreleaser needs full history and tags to build its changelog and
+          # resolve the version it is building.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        if: ${{ steps.release.outputs.release_created && inputs.go-version != '' }}
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        if: ${{ steps.release.outputs.release_created && inputs.go-version == '' }}
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Lets `uses: tittle-xyz/<repo>@v1` track the latest release in that major
+      # series. Only meaningful for repos consumed as Actions.
+      - name: Move major version tag
+        if: ${{ steps.release.outputs.release_created && inputs.major-tag }}
+        run: |
+          major="v${{ steps.release.outputs.major }}"
+          git tag -f "$major"
+          git push -f origin "$major"
