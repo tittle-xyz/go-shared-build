@@ -62,6 +62,14 @@ subject — the prefixes on your individual commits are discarded. Without a
 conventional title, release-please parses nothing, finds no releasable change,
 and silently skips the release.
 
-Rename the pull request and this check will pass; no new push is needed.
+Rename the pull request and this check will pass; no new push is needed --
+provided your ci.yml subscribes to the `edited` event:
+
+    on:
+      pull_request:
+        types: [opened, synchronize, reopened, edited]
+
+Without `edited`, a rename does not re-run this check and the PR stays red until
+an unrelated push. The templates ship with it.
 EOF
 exit 1
