@@ -7,6 +7,13 @@ deliberate upgrade someone has to opt into with `make update-build`.
 Note the local convention: a change to what `make check` accepts is a minor bump
 at minimum, never a patch, because it can turn a previously-green project red.
 
+## [0.6.1](https://github.com/tittle-xyz/go-shared-build/compare/v0.6.0...v0.6.1) (2026-07-26)
+
+
+### Bug Fixes
+
+* stop promising a rename re-runs the title check without the edited trigger ([#19](https://github.com/tittle-xyz/go-shared-build/issues/19)) ([2fb0503](https://github.com/tittle-xyz/go-shared-build/commit/2fb0503810a8f1a978b7101e2b0dc48df309d338))
+
 ## [0.6.0](https://github.com/tittle-xyz/go-shared-build/compare/v0.5.0...v0.6.0) (2026-07-26)
 
 
