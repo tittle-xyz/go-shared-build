@@ -65,6 +65,21 @@ Merging to `main` opens or updates a release PR; merging that PR bumps
 `version.txt`, writes `CHANGELOG.md`, tags, and publishes the GitHub Release.
 Nothing is tagged by hand.
 
+**Squash merges take the PR title as the commit subject, so the PR title has to
+be a Conventional Commit too.** The prefixes on the individual commits are
+discarded. Get this wrong and release-please parses nothing, finds no releasable
+change, and skips the release — with no error anywhere:
+
+```
+commit could not be parsed: 9c9ab07 Migrate to go-shared-build (#38)
+error message: Error: unexpected token ' ' at 1:8, valid tokens [(, !, :]
+commits: 0
+No commits for path: ., skipping
+```
+
+That is a real example: three properly-prefixed commits, a plain-English PR
+title, and a release that silently never happened.
+
 One local convention on top of semver: **anything that changes what `make check`
 accepts is a minor bump at minimum**, because it can turn a passing project red.
 Adding a linter is a `feat:`, not a `fix:`.
