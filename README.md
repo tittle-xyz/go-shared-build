@@ -23,7 +23,7 @@ APP  := myapp
 MAIN := ./cmd/myapp
 
 SHARED_BUILD_REPO ?= https://github.com/tittle-xyz/go-shared-build.git
-SHARED_BUILD_REF  ?= v0.4.1
+SHARED_BUILD_REF  ?= v0.5.0
 SHARED_BUILD_DIR  ?= .build
 
 # Fetch the pinned build before the include is evaluated, so a fresh clone needs
@@ -214,7 +214,7 @@ permissions:
   contents: read
 jobs:
   ci:
-    uses: tittle-xyz/go-shared-build/.github/workflows/go-ci.yml@v0.4.1
+    uses: tittle-xyz/go-shared-build/.github/workflows/go-ci.yml@v0.5.0
 ```
 <!-- x-release-please-end -->
 
