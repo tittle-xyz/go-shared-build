@@ -7,6 +7,17 @@ deliberate upgrade someone has to opt into with `make update-build`.
 Note the local convention: a change to what `make check` accepts is a minor bump
 at minimum, never a patch, because it can turn a previously-green project red.
 
+## [0.2.0](https://github.com/tittle-xyz/go-shared-build/compare/v0.1.0...v0.2.0) (2026-07-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* let release-please config files take precedence over release-type
+
+### Features
+
+* let release-please config files take precedence over release-type ([2f90924](https://github.com/tittle-xyz/go-shared-build/commit/2f9092448fa54c888b6f1128f2ea672648bd06a4))
+
 ## 0.1.0 (2026-07-26)
 
 Initial release.
