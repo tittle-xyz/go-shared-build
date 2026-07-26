@@ -172,8 +172,15 @@ if make run 2>&1 | grep -q "project run target"; then
 else
   echo "  FAIL  skipped target: $(make run 2>&1 | tail -2)"; fail=$((fail + 1))
 fi
-if make run 2>&1 | grep -qi "overriding commands"; then
-  echo "  FAIL  Make warned about overriding commands"; fail=$((fail + 1))
+# Capture, then test. Piping into `grep -q` under `set -o pipefail` is a trap:
+# grep exits on first match and closes the pipe, make dies of SIGPIPE, and the
+# pipeline reports 141 — so the `if` is false even though the text WAS found.
+# This assertion silently could not fail until that was fixed.
+overrides="$(make run 2>&1 | grep -i "overriding commands" || true)"
+if [ -n "$overrides" ]; then
+  echo "  FAIL  Make warned about overriding commands"
+  echo "$overrides" | sed 's/^/          /'
+  fail=$((fail + 1))
 else
   echo "  ok    no override warning"; pass=$((pass + 1))
 fi
