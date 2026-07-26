@@ -344,6 +344,11 @@ the PR title as the commit subject and throws away the individual commits'
 prefixes, so a plain-English title leaves release-please with nothing to parse —
 it finds no releasable change and skips the release without erroring.
 
+`go-ci.yml` enforces this with a `pr-title` job, on by default. Add
+**`ci / pr-title`** to the repo's required status checks and a bad title blocks
+the merge instead of costing a release. Renaming the PR re-runs the check; no new
+push needed. Set `pr-title: false` to opt out.
+
 Two local conventions:
 
 - **A change to what `make check` accepts is a minor bump at minimum**, never a

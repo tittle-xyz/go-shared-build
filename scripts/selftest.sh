@@ -185,6 +185,35 @@ else
   echo "  ok    no override warning"; pass=$((pass + 1))
 fi
 
+echo "==> PR-title check accepts real titles and rejects bad ones"
+title_ok() {
+  if "$SB_ROOT/scripts/check-pr-title.sh" "$1" >/dev/null 2>&1; then
+    echo "  ok    accepts: $1"; pass=$((pass + 1))
+  else
+    echo "  FAIL  should accept: $1"; fail=$((fail + 1))
+  fi
+}
+title_bad() {
+  if "$SB_ROOT/scripts/check-pr-title.sh" "$1" >/dev/null 2>&1; then
+    echo "  FAIL  should reject: $1"; fail=$((fail + 1))
+  else
+    echo "  ok    rejects: $1"; pass=$((pass + 1))
+  fi
+}
+title_ok  "feat: add a thing"
+title_ok  "fix(internal/repo): wrap the clone error"
+title_ok  "feat!: drop the old config format"
+title_ok  "chore(main): release 0.6.0"
+title_ok  "build(deps): bump actions/cache from 4 to 6"
+title_ok  'Revert "feat: add a thing"'
+title_bad "Migrate to go-shared-build"
+title_bad "Add a thing"
+title_bad "feat add a thing"
+title_bad "Feat: capitalised type"
+title_bad "feat:"
+title_bad "wibble: not a real type"
+title_bad ""
+
 echo
 echo "==> $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

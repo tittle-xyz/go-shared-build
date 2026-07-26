@@ -34,6 +34,15 @@ on:
         type: string
         required: false
         default: ubuntu-latest
+      pr-title:
+        description: >-
+          Fail a pull request whose title is not a Conventional Commit. On by
+          default because squash merges take the PR title as the commit subject:
+          a non-conventional title leaves release-please nothing to parse, so it
+          skips the release silently.
+        type: boolean
+        required: false
+        default: true
       readiness:
         description: "Run the toaster-ready ramp-up readiness gate."
         type: boolean
@@ -129,3 +138,25 @@ jobs:
         with:
           min: ${{ inputs.readiness-min }}
           version: ${{ inputs.readiness-version }}
+
+  # Blocks the merge rather than warning. A non-conventional PR title costs a
+  # whole release and gives no error anywhere, so it has to be a hard failure.
+  pr-title:
+    # Only a pull request has a title; nothing to check on push.
+    if: ${{ inputs.pr-title && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Brings in the pinned scripts/check-pr-title.sh, so the rule is the one
+      # this project pinned rather than whatever is on the shared build's main.
+      - name: Sync shared build
+        run: make build-sync
+
+      - name: Check the PR title
+        # Via env, never interpolated into the script body: a PR title is
+        # attacker-controlled on a public repo, and `${{ ... }}` inside `run:`
+        # would be a shell injection vector.
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: .build/scripts/check-pr-title.sh "$TITLE"
