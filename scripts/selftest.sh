@@ -185,6 +185,15 @@ else
   echo "  ok    no override warning"; pass=$((pass + 1))
 fi
 
+echo "==> secret scanning runs, and catches a planted key"
+check "secrets (clean tree)" make secrets
+# A key that does NOT contain a placeholder word, or the scanner would rightly
+# ignore it — the same trap that made an earlier hand-written test pass falsely.
+printf 'package main\n\nconst leaked = "AKIA2X7QFJ3LMNBVCZQP"\n' >"$PROJ/cmd/demo/leak.go"
+check_fails "secrets catches a hardcoded AWS key" make secrets
+rm -f "$PROJ/cmd/demo/leak.go"
+check "secrets clean again after removal" make secrets
+
 echo "==> PR-title check accepts real titles and rejects bad ones"
 title_ok() {
   if "$SB_ROOT/scripts/check-pr-title.sh" "$1" >/dev/null 2>&1; then

@@ -59,6 +59,7 @@ Run `make` for the current list. The one to know is `make check` — `fmt-check`
 | `fmt` `fmt-check` `vet` `lint` `lint-fix` | Format and static analysis |
 | `tidy` `tidy-check` | Module hygiene |
 | `check` | The full pre-push gate |
+| `secrets` `secrets-history` | Secret scanning with pinned gitleaks |
 | `update` | Bump Go toolchain + dependencies, then verify |
 | `update-build` | Move the build pins to their latest releases |
 | `tools` `tools-versions` `tools-clean` | Pinned developer tooling |

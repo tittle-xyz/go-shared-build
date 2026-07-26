@@ -155,8 +155,27 @@ tidy-check: ## Fail if go.mod/go.sum are not tidy
 	mv go.mod.bak go.mod; mv go.sum.bak go.sum 2>/dev/null || true; \
 	exit $$status
 
+# Two scan modes, used where each fits.
+#
+# `secrets` reads the working tree, so it catches uncommitted changes and works in
+# a shallow clone — that is why it is the one in `check`.
+#
+# `secrets-history` walks git history, which is the thing a working-tree scan can
+# never do: a secret committed and later deleted is still in the objects. It needs
+# full history, so CI runs it in a job with fetch-depth: 0 rather than here.
+#
+# A project with deliberately fake credentials in fixtures allowlists them in its
+# own .gitleaks.toml, which gitleaks picks up from the repo root automatically.
+.PHONY: secrets
+secrets: $(GITLEAKS) ## Scan the working tree for hardcoded secrets
+	$(GITLEAKS) dir . --no-banner --redact
+
+.PHONY: secrets-history
+secrets-history: $(GITLEAKS) ## Scan all of git history for secrets (needs full history)
+	$(GITLEAKS) git . --no-banner --redact
+
 # The gate to run before pushing, and what CI runs. Kept as one name so CI never
 # has to enumerate steps — adding a check here rolls out everywhere on update.
 .PHONY: check
-check: fmt-check tidy-check vet lint test ## Run the full pre-push gate
+check: fmt-check tidy-check vet lint test secrets ## Run the full pre-push gate
 

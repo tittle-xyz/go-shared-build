@@ -43,6 +43,15 @@ on:
         type: boolean
         required: false
         default: true
+      secrets-history:
+        description: >-
+          Scan all of git history for secrets, not just the working tree. `make
+          check` already scans the tree; this catches a secret that was committed
+          and later deleted, which is still in the objects. Needs fetch-depth: 0,
+          hence a separate job.
+        type: boolean
+        required: false
+        default: true
       readiness:
         description: "Run the toaster-ready ramp-up readiness gate."
         type: boolean
@@ -160,3 +169,31 @@ jobs:
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: .build/scripts/check-pr-title.sh "$TITLE"
+
+  # Its own job because a history scan needs the full clone, and the check job
+  # deliberately runs shallow. A project with fake credentials in fixtures
+  # allowlists them in its own .gitleaks.toml.
+  secrets-history:
+    if: ${{ inputs.secrets-history }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Cache pinned tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/tittle-xyz/go-tools
+          key: ${{ runner.os }}-gotools-${{ hashFiles('.build/tools.mk') }}
+
+      - name: Sync shared build
+        run: make build-sync
+
+      - name: Scan git history for secrets
+        run: make secrets-history
