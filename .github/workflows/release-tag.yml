@@ -23,12 +23,15 @@ on:
     inputs:
       release-type:
         description: >-
-          release-please strategy. Defaults to "simple", which tracks the version
-          in version.txt and suits repos with no language manifest. Ignored when
-          release-please-config.json is present, which takes precedence.
+          release-please strategy, for repos with no release-please-config.json.
+          Leave empty (the default) when the repo ships that config: passing
+          release-type puts the action into non-manifest mode, where the config
+          file and .release-please-manifest.json are ignored entirely — which
+          silently produces a first release of 1.0.0 instead of the manifest's
+          starting version.
         type: string
         required: false
-        default: simple
+        default: ""
     outputs:
       release_created:
         description: "true when this run created a release."

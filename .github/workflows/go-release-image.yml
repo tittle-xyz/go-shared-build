@@ -22,6 +22,17 @@ name: go-release-image
 on:
   workflow_call:
     inputs:
+      release-type:
+        description: >-
+          release-please strategy, for repos with no release-please-config.json.
+          Leave empty (the default) when the repo ships that config: passing
+          release-type puts the action into non-manifest mode, where the config
+          file and .release-please-manifest.json are ignored entirely — which
+          silently produces a first release of 1.0.0 instead of the manifest's
+          starting version.
+        type: string
+        required: false
+        default: ""
       image-name:
         description: "Image name under ghcr.io/<owner>/. Defaults to the repo name."
         type: string
@@ -60,7 +71,7 @@ jobs:
       - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         id: release
         with:
-          release-type: go
+          release-type: ${{ inputs.release-type }}
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         if: ${{ steps.release.outputs.release_created }}

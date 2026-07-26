@@ -225,6 +225,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 Same flow as every other tittle-xyz repo: [release-please](https://github.com/googleapis/release-please)
 driven by [Conventional Commits](https://www.conventionalcommits.org).
 
+Consuming repos ship their own `release-please-config.json` and
+`.release-please-manifest.json`; the reusable release workflows deliberately pass
+no `release-type`, because doing so switches release-please into non-manifest mode
+where those files are ignored — which silently produces a first release of 1.0.0
+instead of the manifest's starting version.
+
 Merge a `feat:` or `fix:` to `main` and release-please opens or updates a release
 PR. Merging *that* bumps `version.txt`, writes `CHANGELOG.md`, creates the tag and
 the GitHub Release — and refreshes the pinned versions in this README, so the
