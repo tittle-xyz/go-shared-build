@@ -346,8 +346,19 @@ it finds no releasable change and skips the release without erroring.
 
 `go-ci.yml` enforces this with a `pr-title` job, on by default. Add
 **`ci / pr-title`** to the repo's required status checks and a bad title blocks
-the merge instead of costing a release. Renaming the PR re-runs the check; no new
-push needed. Set `pr-title: false` to opt out.
+the merge instead of costing a release. Set `pr-title: false` to opt out.
+
+**The caller must subscribe to `edited`**, or renaming a PR will not re-run the
+check and a corrected title stays red until some unrelated push:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+```
+
+A reusable workflow cannot set its caller's triggers, so this one line has to be
+in each consumer's `ci.yml`. Both templates ship with it.
 
 Two local conventions:
 
