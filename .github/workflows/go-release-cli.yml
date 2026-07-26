@@ -59,7 +59,7 @@ jobs:
           release-type: ${{ inputs.release-type }}
 
       # Everything below runs only when a release was just created.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ steps.release.outputs.release_created }}
         with:
           # goreleaser needs full history and tags to build its changelog and
