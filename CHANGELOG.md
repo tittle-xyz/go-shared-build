@@ -7,6 +7,13 @@ deliberate upgrade someone has to opt into with `make update-build`.
 Note the local convention: a change to what `make check` accepts is a minor bump
 at minimum, never a patch, because it can turn a previously-green project red.
 
+## [0.3.0](https://github.com/tittle-xyz/go-shared-build/compare/v0.2.0...v0.3.0) (2026-07-26)
+
+
+### Features
+
+* add SHARED_SKIP_TARGETS so a project can keep its own target ([8b8e297](https://github.com/tittle-xyz/go-shared-build/commit/8b8e2971cc0a530f8035e49fa6ba40c896c5b01d))
+
 ## [0.2.0](https://github.com/tittle-xyz/go-shared-build/compare/v0.1.0...v0.2.0) (2026-07-26)
 
 
