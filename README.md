@@ -222,7 +222,7 @@ jobs:
 | --- | --- |
 | [`go-ci.yml`](.github/workflows/go-ci.yml) | Any Go project. Runs `make check`, optional race and build. |
 | [`go-release-cli.yml`](.github/workflows/go-release-cli.yml) | CLIs. release-please + GoReleaser binaries and checksums. |
-| [`go-release-image.yml`](.github/workflows/go-release-image.yml) | Services. release-please + container image to GHCR. |
+| [`go-release-image.yml`](.github/workflows/go-release-image.yml) | Services. release-please + container image to GHCR, plus CLI binaries with `binaries: true`. |
 | [`release-tag.yml`](.github/workflows/release-tag.yml) | Repos with no build artifact. release-please only — what this repo uses. |
 
 ### Release PRs and the approval prompt
@@ -259,6 +259,24 @@ the approval prompt back. Two things to keep in mind:
   `push`/`release` events, unlike a `GITHUB_TOKEN` tag. The artifact builds here
   stay inlined behind the `release_created` gate anyway, so they work either way
   and don't depend on which token is in use.
+
+### Shipping an image *and* CLI binaries
+
+A repo that publishes both — `track` is the case — uses `go-release-image.yml`
+with `binaries: true` rather than calling two workflows:
+
+```yaml
+jobs:
+  release:
+    uses: tittle-xyz/go-shared-build/.github/workflows/go-release-image.yml@v0.7.0
+    with:
+      binaries: true
+    secrets:
+      RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+```
+
+This has to be one workflow, not two: release-please can only run once per
+release. Two callers would each try to cut it and fight over the tag.
 
 ## Security posture
 
