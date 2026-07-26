@@ -73,13 +73,13 @@ jobs:
       # Two mutually exclusive setup steps: an explicit version when the caller
       # asks for one, otherwise follow go.mod so the toolchain tracks whatever
       # `make update-go` last set.
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         if: inputs.go-version != ''
         with:
           go-version: ${{ inputs.go-version }}
           cache: true
 
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         if: inputs.go-version == ''
         with:
           go-version-file: go.mod
