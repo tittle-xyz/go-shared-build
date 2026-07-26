@@ -162,6 +162,21 @@ Don't require `ci / readiness` in a repo that sets `readiness: false` — it
 reports as skipped, and requiring a deliberately-disabled check is a trap for
 the next person.
 
+**Tell Dependabot to leave these refs alone.** Its `github-actions` ecosystem sees
+`uses: tittle-xyz/go-shared-build/...@vX.Y.Z` and will happily bump it on its own
+— putting the CI workflow on one version while the `Makefile` pin stays on
+another. `make update-build` moves them together on purpose, so it should be the
+only thing that touches them:
+
+```yaml
+  - package-ecosystem: github-actions
+    directory: /
+    ignore:
+      - dependency-name: "tittle-xyz/go-shared-build/*"
+```
+
+Third-party actions still get updated normally.
+
 A side benefit once migrated: check names are identical across every repo on the
 shared build, so protection rules stop being per-repo trivia.
 
