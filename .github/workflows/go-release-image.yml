@@ -58,6 +58,15 @@ on:
         type: boolean
         required: false
         default: false
+      binaries:
+        description: >-
+          Also build and attach CLI binaries with GoReleaser, for a repo that
+          ships a command-line tool alongside its image. Requires a
+          .goreleaser.yaml. One release, both artifact kinds — release-please
+          can only run once per release, so this cannot be a second workflow.
+        type: boolean
+        required: false
+        default: false
 
     secrets:
       RELEASE_PLEASE_TOKEN:
@@ -86,6 +95,13 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ steps.release.outputs.release_created }}
+        with:
+          # GoReleaser needs full history and tags to resolve the version it is
+          # building. Quoted '0'/'1' on purpose: in a GitHub expression the number
+          # 0 is falsy, so `inputs.binaries && 0 || 1` silently yields 1 even when
+          # binaries is true. Non-empty strings are truthy, so this works.
+          fetch-depth: ${{ inputs.binaries && '0' || '1' }}
+          fetch-tags: ${{ inputs.binaries }}
 
       - name: Resolve image name
         if: ${{ steps.release.outputs.release_created }}
@@ -146,3 +162,18 @@ jobs:
           # recompiles the whole image from scratch.
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # CLI binaries, for a repo that ships both an image and a command-line tool.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: ${{ steps.release.outputs.release_created && inputs.binaries }}
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        if: ${{ steps.release.outputs.release_created && inputs.binaries }}
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
