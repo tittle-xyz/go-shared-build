@@ -132,6 +132,24 @@ the version in the filename, e.g. `golangci-lint-v2.12.2`. Two consequences:
 Set `TOOLS_DIR` to something repo-local if a project must be hermetic. Current
 pins: `make tools-versions`.
 
+## Keeping a project's own target
+
+When a project already defines a target this file also defines, Make warns about
+overriding commands on every invocation. `SHARED_SKIP_TARGETS` leaves the shared
+one undefined instead — set it *before* the include:
+
+```make
+SHARED_SKIP_TARGETS := run
+include $(SHARED_BUILD_DIR)/go.mk
+
+run: ## the project's own run
+	...
+```
+
+Currently supported for `run` and `cover`. Use it sparingly: the value of the
+shared build is that `make check` means the same thing everywhere. It exists for
+established target names that predate the shared build.
+
 ## Reusable workflows
 
 CI and release logic are reusable workflows, so they move with the pin too. A

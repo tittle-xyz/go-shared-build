@@ -152,6 +152,32 @@ require github.com/spf13/pflag v1.0.9
 EOF
 check_fails "tidy-check catches an untidy go.mod" make tidy-check
 
+echo "==> SHARED_SKIP_TARGETS lets a project keep its own target"
+cat >"$PROJ/Makefile" <<EOF
+APP  := demo
+MAIN := ./cmd/demo
+
+SHARED_SKIP_TARGETS := run
+
+SHARED_BUILD_DIR := $SB_ROOT
+
+include \$(SHARED_BUILD_DIR)/go.mk
+
+.PHONY: run
+run: ## the project's own run
+	@echo "project run target"
+EOF
+if make run 2>&1 | grep -q "project run target"; then
+  echo "  ok    skipped target uses the project's definition"; pass=$((pass + 1))
+else
+  echo "  FAIL  skipped target: $(make run 2>&1 | tail -2)"; fail=$((fail + 1))
+fi
+if make run 2>&1 | grep -qi "overriding commands"; then
+  echo "  FAIL  Make warned about overriding commands"; fail=$((fail + 1))
+else
+  echo "  ok    no override warning"; pass=$((pass + 1))
+fi
+
 echo
 echo "==> $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

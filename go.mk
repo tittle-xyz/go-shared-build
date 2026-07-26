@@ -28,6 +28,21 @@ VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo d
 VERSION_VAR ?= main.version
 GO_LDFLAGS ?= -X $(VERSION_VAR)=$(VERSION)
 
+# Target names to leave undefined, so a project can keep its own version of one
+# without Make warning about overriding commands. Set it BEFORE the include:
+#
+#   SHARED_SKIP_TARGETS := run
+#   include $(SHARED_BUILD_DIR)/go.mk
+#   run: ## project's own run
+#           ...
+#
+# Use sparingly — the value of the shared build is that `make check` means the
+# same thing everywhere. Reach for this when a project has an established target
+# name that predates the shared build.
+SHARED_SKIP_TARGETS ?=
+# Expands to a non-empty string when target $(1) should be defined here.
+sb_define = $(if $(filter $(1),$(SHARED_SKIP_TARGETS)),,yes)
+
 GO         ?= go
 GOFLAGS    ?=
 TEST_FLAGS ?=
@@ -64,9 +79,11 @@ build: ## Build the binary into bin/
 install: ## Install the binary into GOBIN
 	$(GO) install $(GOFLAGS) -ldflags "$(GO_LDFLAGS)" $(MAIN)
 
+ifneq ($(call sb_define,run),)
 .PHONY: run
 run: ## Build and run the binary (pass args with ARGS="...")
 	$(GO) run $(GOFLAGS) -ldflags "$(GO_LDFLAGS)" $(MAIN) $(ARGS)
+endif
 
 .PHONY: clean
 clean: ## Remove build output and coverage files
@@ -82,10 +99,12 @@ test: ## Run tests
 test-race: ## Run tests with the race detector
 	$(GO) test -race $(TEST_FLAGS) ./...
 
+ifneq ($(call sb_define,cover),)
 .PHONY: cover
 cover: ## Run tests with coverage and print a per-function summary
 	$(GO) test -coverprofile=$(COVER_FILE) $(TEST_FLAGS) ./...
 	$(GO) tool cover -func=$(COVER_FILE) | tail -1
+endif
 
 .PHONY: cover-html
 cover-html: cover ## Open the coverage report in a browser
