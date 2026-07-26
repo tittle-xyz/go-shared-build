@@ -225,6 +225,41 @@ jobs:
 | [`go-release-image.yml`](.github/workflows/go-release-image.yml) | Services. release-please + container image to GHCR. |
 | [`release-tag.yml`](.github/workflows/release-tag.yml) | Repos with no build artifact. release-please only — what this repo uses. |
 
+### Release PRs and the approval prompt
+
+release-please creates its release pull request. If it does so as
+`github-actions[bot]` — which is what happens with the default `GITHUB_TOKEN` —
+GitHub will not run workflows for that PR without a human clicking approve on
+each run. With required status checks enabled the PR is then *blocked*, not
+merely unchecked. Repo settings cannot switch this off: the fork-PR approval
+policy does not apply to private repos, and a release branch is not a fork.
+
+So the release workflows accept an optional `RELEASE_PLEASE_TOKEN`. Given one,
+release-please authors the PR as that identity, workflows run normally, and
+release PRs get real CI signal:
+
+```yaml
+jobs:
+  release:
+    uses: tittle-xyz/go-shared-build/.github/workflows/go-release-cli.yml@v0.4.1
+    secrets:
+      RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+```
+
+Passed explicitly rather than with `secrets: inherit`, so the release job sees
+exactly one secret instead of every secret the org has.
+
+Unset, it falls back to `github.token` and everything still works — you just get
+the approval prompt back. Two things to keep in mind:
+
+- **A fine-grained PAT expires.** When it does, releases stop and the symptom is
+  the approval prompt returning. A GitHub App installation token avoids the
+  expiry entirely and is the better long-term answer.
+- With a real token, a tag created by release-please **does** raise
+  `push`/`release` events, unlike a `GITHUB_TOKEN` tag. The artifact builds here
+  stay inlined behind the `release_created` gate anyway, so they work either way
+  and don't depend on which token is in use.
+
 ## Security posture
 
 This repo executes code in every consuming project's CI, some of it with
