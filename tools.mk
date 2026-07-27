@@ -32,6 +32,11 @@ GITLEAKS      := $(TOOLS_BIN)/gitleaks-$(GITLEAKS_VERSION)
 # otherwise it gets the shared config. Divergence should be rare and deliberate.
 GOLANGCI_CONFIG ?= $(if $(wildcard .golangci.yml),.golangci.yml,$(abspath $(SB)/golangci.yml))
 
+# Same pattern for gitleaks. A project shipping its own .gitleaks.toml should also
+# exclude ^\.build/ and ^\.tools/, or `gitleaks dir` will flag the shared build's
+# own negative-test fixture.
+GITLEAKS_CONFIG ?= $(if $(wildcard .gitleaks.toml),.gitleaks.toml,$(abspath $(SB)/gitleaks.toml))
+
 $(TOOLS_BIN):
 	@mkdir -p $(TOOLS_BIN)
 

@@ -1,0 +1,22 @@
+# Shared gitleaks configuration for tittle-xyz projects.
+#
+# Used by `make secrets` unless a project ships its own .gitleaks.toml at its repo
+# root, mirroring how golangci.yml works.
+title = "tittle-xyz shared gitleaks config"
+
+[extend]
+useDefault = true
+
+# Note the plural. A top-level [allowlist] *replaces* gitleaks' default global
+# allowlist and loses all of its noise suppression; [[allowlists]] is additive.
+[[allowlists]]
+description = """
+Fetched build tooling, not project code. `gitleaks dir` walks the filesystem rather
+than git, so it sees .build/ and .tools/ even though both are gitignored — and
+.build/scripts/selftest.sh deliberately contains a planted key as a negative-test
+fixture. A consuming project is not responsible for its build tooling's fixtures.
+"""
+paths = [
+  '''^\.build/''',
+  '''^\.tools/''',
+]

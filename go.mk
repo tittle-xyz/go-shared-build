@@ -168,11 +168,11 @@ tidy-check: ## Fail if go.mod/go.sum are not tidy
 # own .gitleaks.toml, which gitleaks picks up from the repo root automatically.
 .PHONY: secrets
 secrets: $(GITLEAKS) ## Scan the working tree for hardcoded secrets
-	$(GITLEAKS) dir . --no-banner --redact
+	$(GITLEAKS) dir . --no-banner --redact --config $(GITLEAKS_CONFIG)
 
 .PHONY: secrets-history
 secrets-history: $(GITLEAKS) ## Scan all of git history for secrets (needs full history)
-	$(GITLEAKS) git . --no-banner --redact
+	$(GITLEAKS) git . --no-banner --redact --config $(GITLEAKS_CONFIG)
 
 # The gate to run before pushing, and what CI runs. Kept as one name so CI never
 # has to enumerate steps — adding a check here rolls out everywhere on update.
