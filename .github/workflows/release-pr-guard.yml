@@ -1,0 +1,127 @@
+# Reusable guard for release-please pull requests.
+#
+# A release PR is meant to contain nothing but release notes and the version
+# bump. That is what makes the tag it cuts trustworthy: the tree the tag points
+# at is the tree that was already reviewed, and — for infrastructure repos —
+# already deployed all the way to production. Nothing enforces that by default.
+# It holds by convention until the one time it doesn't, and the failure is
+# silent: a tag that certifies a tree nobody applied.
+#
+# Callers:
+#
+#   jobs:
+#     release-pr:
+#       uses: tittle-xyz/go-shared-build/.github/workflows/release-pr-guard.yml@v1
+#
+# Safe to run on every pull request — anything whose head branch is not a
+# release-please branch passes untouched.
+name: release-pr-guard
+
+on:
+  workflow_call:
+    inputs:
+      allowed-paths:
+        description: >-
+          Newline-separated paths release-please may change. Glob patterns are
+          allowed. The defaults cover the `simple` and `go` release types; add
+          package manifests (package.json, Cargo.toml, …) for other types.
+        type: string
+        required: false
+        default: |
+          CHANGELOG.md
+          .release-please-manifest.json
+          version.txt
+      branch-prefix:
+        description: "Head-branch prefix that identifies a release-please PR."
+        type: string
+        required: false
+        default: release-please--branches--
+      runs-on:
+        description: "Runner to execute on."
+        type: string
+        required: false
+        default: ubuntu-latest
+
+jobs:
+  guard:
+    name: release-pr
+    runs-on: ${{ inputs.runs-on }}
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Verify the release PR changes only release-please files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.head_ref }}
+          PREFIX: ${{ inputs.branch-prefix }}
+          ALLOWED: ${{ inputs.allowed-paths }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PR:-}" ]; then
+            echo "Not a pull_request event; nothing to check."
+            exit 0
+          fi
+
+          case "$HEAD_REF" in
+            "$PREFIX"*) ;;
+            *)
+              echo "Head branch '$HEAD_REF' is not a release PR — skipping."
+              echo "Not a release PR; guard skipped." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+              ;;
+          esac
+
+          # Read the allowlist, dropping blank lines and trailing whitespace that
+          # a YAML block scalar leaves behind.
+          allowed=()
+          while IFS= read -r line; do
+            line="${line%"${line##*[![:space:]]}"}"
+            [ -n "$line" ] && allowed+=("$line")
+          done <<< "$ALLOWED"
+
+          changed="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')"
+
+          offenders=()
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            ok=false
+            for pattern in "${allowed[@]}"; do
+              # Unquoted on purpose: this is where the glob in the allowlist
+              # gets its meaning.
+              case "$f" in
+                $pattern) ok=true; break ;;
+              esac
+            done
+            $ok || offenders+=("$f")
+          done <<< "$changed"
+
+          if [ "${#offenders[@]}" -gt 0 ]; then
+            {
+              echo "### Release PR guard failed"
+              echo
+              echo "This release PR changes files outside the release-please allowlist."
+              echo "A release tag is only a trustworthy marker if the release PR carries"
+              echo "no content of its own — move these changes to their own PR."
+              echo
+              echo "Unexpected files:"
+              printf -- '- \`%s\`\n' "${offenders[@]}"
+              echo
+              echo "Allowed:"
+              printf -- '- \`%s\`\n' "${allowed[@]}"
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            echo "::error::Release PR changes ${#offenders[@]} file(s) outside the allowlist:"
+            printf '::error::  %s\n' "${offenders[@]}"
+            exit 1
+          fi
+
+          {
+            echo "### Release PR guard passed"
+            echo
+            echo "Only release-please files changed."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "OK — release PR changes only release-please files."
