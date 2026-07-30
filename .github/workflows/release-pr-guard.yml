@@ -110,10 +110,12 @@ jobs:
               echo "no content of its own — move these changes to their own PR."
               echo
               echo "Unexpected files:"
-              printf -- '- \`%s\`\n' "${offenders[@]}"
+              # Double quotes, not single: inside single quotes a backslash is
+              # literal, so '\`' would emit a stray backslash into the summary.
+              printf -- "- \`%s\`\n" "${offenders[@]}"
               echo
               echo "Allowed:"
-              printf -- '- \`%s\`\n' "${allowed[@]}"
+              printf -- "- \`%s\`\n" "${allowed[@]}"
             } >> "$GITHUB_STEP_SUMMARY"
 
             echo "::error::Release PR changes ${#offenders[@]} file(s) outside the allowlist:"
