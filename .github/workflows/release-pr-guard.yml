@@ -31,6 +31,15 @@ on:
           CHANGELOG.md
           .release-please-manifest.json
           version.txt
+      config-path:
+        description: >-
+          Path to the release-please config. Its `extra-files` and
+          `changelog-path` settings are added to the allowlist automatically, so
+          a repo that configures release-please to touch additional files does
+          not have to restate them here.
+        type: string
+        required: false
+        default: release-please-config.json
       branch-prefix:
         description: "Head-branch prefix that identifies a release-please PR."
         type: string
@@ -67,6 +76,7 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           PREFIX: ${{ inputs.branch-prefix }}
           ALLOWED: ${{ inputs.allowed-paths }}
+          CONFIG: ${{ inputs.config-path }}
         run: |
           set -euo pipefail
 
@@ -91,6 +101,35 @@ jobs:
             line="${line%"${line##*[![:space:]]}"}"
             [ -n "$line" ] && allowed+=("$line")
           done <<< "$ALLOWED"
+
+          # release-please can be configured to update files beyond the
+          # defaults — `extra-files`, a custom `changelog-path`. Those
+          # legitimately appear in a release PR, so derive them from the config
+          # rather than making every repo restate them. Without this, the first
+          # repo to add an extra-file gets a failing release with no obvious
+          # connection to the change that caused it.
+          if [ -f "$CONFIG" ]; then
+            derived="$(jq -r '
+              def files($dir):
+                ( ( (."extra-files" // []) | map(if type=="object" then (.path // empty) else . end) )
+                  + ( if ."changelog-path" then [."changelog-path"] else [] end )
+                ) | map(if $dir == "." or $dir == "" then . else ($dir + "/" + .) end) | .[];
+              ( files(".") ),
+              ( (.packages // {}) | to_entries[] | .key as $k | .value | files($k) )
+            ' "$CONFIG" 2>/dev/null || true)"
+
+            if [ -n "$derived" ]; then
+              while IFS= read -r p; do
+                [ -n "$p" ] && allowed+=("$p")
+              done <<< "$derived"
+              echo "Derived from $CONFIG: $(echo "$derived" | tr '\n' ' ')"
+            fi
+          else
+            # Not fatal: a repo may keep its config elsewhere, and failing a
+            # release PR over a missing config would be worse than the trap this
+            # derivation closes.
+            echo "No $CONFIG found; using the configured allowlist only."
+          fi
 
           # Three dots: diff against the merge base, so commits landing on the
           # base branch after this PR opened do not count as its changes.

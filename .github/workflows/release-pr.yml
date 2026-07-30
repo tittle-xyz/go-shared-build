@@ -1,0 +1,20 @@
+name: release-pr
+
+# This repo defines the release-PR gate, so it should be subject to it — a rule
+# its author is exempt from is a rule nobody checks.
+#
+# It is also the sharpest test of the allowlist derivation: this repo's
+# release-please config sets `extra-files: ["README.md"]`, so its release PRs
+# change a file outside the hardcoded defaults. If the derivation regresses, this
+# workflow fails on the very next release rather than silently going wrong in a
+# consumer months later.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  release-pr:
+    uses: ./.github/workflows/release-pr-guard.yml
