@@ -7,6 +7,13 @@ deliberate upgrade someone has to opt into with `make update-build`.
 Note the local convention: a change to what `make check` accepts is a minor bump
 at minimum, never a patch, because it can turn a previously-green project red.
 
+## [0.9.1](https://github.com/tittle-xyz/go-shared-build/compare/v0.9.0...v0.9.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* derive the release-PR allowlist from the release-please config ([#31](https://github.com/tittle-xyz/go-shared-build/issues/31)) ([8f1fbcb](https://github.com/tittle-xyz/go-shared-build/commit/8f1fbcbf0a4fbe580c7f055389a10fca01e87be6)), closes [#30](https://github.com/tittle-xyz/go-shared-build/issues/30)
+
 ## [0.9.0](https://github.com/tittle-xyz/go-shared-build/compare/v0.8.1...v0.9.0) (2026-07-30)
 
 
