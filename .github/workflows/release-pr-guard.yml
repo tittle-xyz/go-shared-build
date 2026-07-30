@@ -90,8 +90,10 @@ jobs:
             [ -n "$f" ] || continue
             ok=false
             for pattern in "${allowed[@]}"; do
-              # Unquoted on purpose: this is where the glob in the allowlist
-              # gets its meaning.
+              # Unquoted on purpose: this is where a glob in the allowlist gets
+              # its meaning. Quoting would make "packages/*/CHANGELOG.md" match
+              # only a directory literally named "*".
+              # shellcheck disable=SC2254
               case "$f" in
                 $pattern) ok=true; break ;;
               esac
