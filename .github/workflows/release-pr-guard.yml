@@ -46,22 +46,31 @@ jobs:
   guard:
     name: release-pr
     runs-on: ${{ inputs.runs-on }}
+    # Only contents:read. The changed-file list comes from `git diff`, not the
+    # pulls API, specifically so this needs no permission beyond what every
+    # caller already grants — otherwise folding it into go-ci would force a
+    # permissions edit in every consuming repo.
     permissions:
       contents: read
-      pull-requests: read
     steps:
+      # Full history: the diff needs both endpoints, and a shallow clone has
+      # neither the base commit nor a merge base to compute against.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, inputs.branch-prefix) }}
+        with:
+          fetch-depth: 0
+
       - name: Verify the release PR changes only release-please files
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_REF: ${{ github.head_ref }}
           PREFIX: ${{ inputs.branch-prefix }}
           ALLOWED: ${{ inputs.allowed-paths }}
         run: |
           set -euo pipefail
 
-          if [ -z "${PR:-}" ]; then
+          if [ "${GITHUB_EVENT_NAME}" != "pull_request" ]; then
             echo "Not a pull_request event; nothing to check."
             exit 0
           fi
@@ -83,7 +92,9 @@ jobs:
             [ -n "$line" ] && allowed+=("$line")
           done <<< "$ALLOWED"
 
-          changed="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')"
+          # Three dots: diff against the merge base, so commits landing on the
+          # base branch after this PR opened do not count as its changes.
+          changed="$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")"
 
           offenders=()
           while IFS= read -r f; do

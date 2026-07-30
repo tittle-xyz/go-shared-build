@@ -72,6 +72,26 @@ on:
         type: string
         required: false
         default: v0.5.0
+      release-pr:
+        description: >-
+          Fail a release-please PR that changes anything outside the release
+          allowlist. On by default: a release tag is only trustworthy if the
+          release PR carries no content of its own, and nothing else enforces
+          that. Non-release PRs are unaffected.
+        type: boolean
+        required: false
+        default: true
+      release-pr-allowed-paths:
+        description: >-
+          Newline-separated paths a release PR may change. Globs allowed. Empty
+          uses the guard's own defaults, which cover the `simple` and `go`
+          release types.
+        type: string
+        required: false
+        default: |
+          CHANGELOG.md
+          .release-please-manifest.json
+          version.txt
 
 permissions:
   contents: read
@@ -169,6 +189,21 @@ jobs:
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: .build/scripts/check-pr-title.sh "$TITLE"
+
+  # A release PR should carry nothing but release notes and the version bump —
+  # that is what makes the tag it cuts trustworthy, since the tree the tag points
+  # at is the tree that was already reviewed. Delegates to the standalone guard
+  # so non-Go repos (infrastructure monorepos) can call the same gate directly
+  # without going through go-ci.
+  #
+  # `./` resolves within go-shared-build at the same commit this workflow was
+  # called at, so a consumer pinned to a tag gets that tag's guard — the two can
+  # never drift apart.
+  release-pr:
+    if: ${{ inputs.release-pr && github.event_name == 'pull_request' }}
+    uses: ./.github/workflows/release-pr-guard.yml
+    with:
+      allowed-paths: ${{ inputs.release-pr-allowed-paths }}
 
   # Its own job because a history scan needs the full clone, and the check job
   # deliberately runs shallow. A project with fake credentials in fixtures
