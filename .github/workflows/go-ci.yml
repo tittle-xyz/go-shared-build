@@ -163,7 +163,7 @@ jobs:
           fetch-depth: 0
 
       - name: Gate ramp-up readiness
-        uses: tittle-xyz/toaster-ready@46660d0fbe6761413d1390a6b707fb727214da20 # v0.5.0
+        uses: tittle-xyz/toaster-ready@17017fe7fea74057f41ab901004468d7ee8c124f # v0.6.0
         with:
           min: ${{ inputs.readiness-min }}
           version: ${{ inputs.readiness-version }}
